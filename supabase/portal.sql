@@ -52,6 +52,7 @@ begin
   end if;
   return new;
 end; $$;
+revoke all on function public.portal_check_post_rate() from public,anon,authenticated;
 drop trigger if exists portal_posts_rate_limit on public.portal_posts;
 create trigger portal_posts_rate_limit before insert on public.portal_posts for each row execute function public.portal_check_post_rate();
 

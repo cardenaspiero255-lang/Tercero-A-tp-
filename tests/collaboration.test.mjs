@@ -76,3 +76,23 @@ test('push backend usa exportaciones nombradas de web-push 3.6.7, sin default im
  assert.doesNotMatch(script,/\{default:webpush\}/);
  assert.match(script,/import\('web-push'\)/);
 });
+
+test('la vista previa no anuncia colaboración activa sin claves privadas, admin e invitación',()=>{
+ const original={...process.env};
+ const response=()=>({statusCode:200,status(n){this.statusCode=n;return this},setHeader(){},json(v){this.body=v;return this}});
+ try{
+   process.env.SUPABASE_URL='https://xvoaddorhezxddyaomsu.supabase.co';
+   process.env.SUPABASE_PUBLISHABLE_KEY='sb_publishable_sample';
+   delete process.env.SUPABASE_SECRET_KEY;
+   delete process.env.PORTAL_ADMIN_EMAIL;
+   delete process.env.CLASSROOM_INVITE_CODE;
+   let r=response();config({method:'GET'},r);
+   assert.equal(r.body.enabled,false,'no activar con backend incompleto');
+   assert.equal(r.body.pushEnabled,false);
+   process.env.SUPABASE_SECRET_KEY='sb_secret_test_placeholder';
+   process.env.PORTAL_ADMIN_EMAIL='admin@example.cl';
+   process.env.CLASSROOM_INVITE_CODE='clave-test';
+   r=response();config({method:'GET'},r);
+   assert.equal(r.body.enabled,true,'habilitar solo tras configurar toda la base');
+ }finally{process.env=original}
+});
