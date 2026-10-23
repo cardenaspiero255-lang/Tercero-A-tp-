@@ -1,0 +1,12 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+const read=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8');
+const page=read('index.html');const script=read('app.js');const style=read('styles.css');const worker=read('sw.js');
+test('HTML carga scripts y CSS locales, sin Base44',()=>{assert.match(page,/src="\.\/app\.js"/);assert.match(page,/href="\.\/styles\.css"/);assert.doesNotMatch(page,/base44\.com/)});
+test('existen navegación y pantalla de horarios de los cinco días',()=>{assert.match(script,/const days=\['Lunes','Martes','Miércoles','Jueves','Viernes'\]/);assert.match(script,/const plans=/);assert.match(script,/function schedulePage/)});
+test('descansos separados de las clases',()=>{assert.match(script,/B\('Recreo'\)/);assert.match(script,/B\('Almuerzo'\)/)});
+test('tareas, evaluaciones, recursos, avisos, notas y FPS',()=>{for(const v of ['taskForm','examForm','resourceForm','noticeForm','notesForm','measureFps'])assert.ok(script.includes(v),v)});
+test('PWA usa caché público y excluye credenciales y APIs',()=>{assert.match(worker,/r\.method/);assert.match(worker,/Authorization/);assert.match(worker,/api\//)});
+test('estilos contemplan móviles y reducen animaciones si procede',()=>{assert.match(style,/@media\(max-width:/);assert.match(style,/prefers-reduced-motion/)});
+test('cabeceras de seguridad y despliegue estático',()=>{const conf=JSON.parse(read('vercel.json'));assert.equal(conf.framework,null);assert.ok(conf.headers[0].headers.some(x=>x.key==='X-Content-Type-Options'))});

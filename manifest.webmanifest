@@ -1,0 +1,18 @@
+{
+  "name": "Portal 3.º Medio A TP",
+  "short_name": "3A TP",
+  "description": "Horario y actividades del curso 3.º Medio A TP",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#090f1b",
+  "theme_color": "#0c1223",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
