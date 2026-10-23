@@ -7,7 +7,8 @@ export default function handler(req,res){
  const vapidPublicKey=safeValue(process.env.VAPID_PUBLIC_KEY);
  const safeOrigin=/^https:\/\/[a-z0-9-]+\.supabase\.co$/.test(url);
  const safeKey=publishableKey.startsWith('sb_publishable_') || (publishableKey.startsWith('eyJ')&&publishableKey.length>80);
- const ready=Boolean(safeValue(process.env.SUPABASE_SECRET_KEY)&&safeValue(process.env.PORTAL_ADMIN_EMAIL)&&safeValue(process.env.CLASSROOM_INVITE_CODE));
- const enabled=Boolean(safeOrigin&&safeKey&&ready);
- return res.status(200).json({enabled,supabaseUrl:enabled?url:'',publishableKey:enabled?publishableKey:'',pushEnabled:enabled&&Boolean(vapidPublicKey&&process.env.VAPID_PRIVATE_KEY&&process.env.SUPABASE_SECRET_KEY&&process.env.CRON_SECRET),vapidPublicKey:enabled?vapidPublicKey:''});
+ // A preview must stay disabled until the database is initialized and email sign-in is usable.
+ const enabled=Boolean(safeOrigin&&safeKey&&process.env.PORTAL_FEATURE_ACTIVE==='true');
+ const pushEnabled=enabled&&Boolean(vapidPublicKey&&process.env.VAPID_PRIVATE_KEY&&process.env.CRON_SECRET);
+ return res.status(200).json({enabled,supabaseUrl:enabled?url:'',publishableKey:enabled?publishableKey:'',pushEnabled,vapidPublicKey:pushEnabled?vapidPublicKey:''});
 }

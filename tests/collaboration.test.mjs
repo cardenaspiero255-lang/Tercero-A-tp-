@@ -48,24 +48,19 @@ test('cron exige secreto antes de tocar base de datos',async()=>{
 test('service worker escucha push y abre URL del portal',()=>{const sw=read('sw.js');assert.match(sw,/addEventListener\('push'/);assert.match(sw,/notificationclick/);});
 test('migración contiene RLS para escritura por alumnos y actualización por administrador',()=>{const sql=read('supabase/portal.sql');assert.match(sql,/enable row level security/i);assert.match(sql,/for insert\s+to authenticated/i);assert.match(sql,/for update\s+to authenticated/i);assert.match(sql,/portal_roles/);assert.doesNotMatch(sql,/grant\s+insert\s+on\s+public\.portal_roles\s+to\s+authenticated/i)});
 
-test('reclamación de administrador exige token y correo verificado configurado',async()=>{
- const {default:claim}=await import('../api/claim-admin.js');
- const old={...process.env};
- try{process.env.PORTAL_ADMIN_EMAIL='';const r={statusCode:200,status(n){this.statusCode=n;return this},json(v){this.body=v;return this},setHeader(){}};
- await claim({method:'POST',headers:{}},r);assert.ok([401,503].includes(r.statusCode));assert.equal(r.body.admin,undefined);
- }finally{process.env=old}
+test('proceso cron rechaza solicitudes sin bearer válido y jamás requiere service role',async()=>{
+ const result={statusCode:200,body:null,status(n){this.statusCode=n;return this;},json(v){this.body=v;return this;},setHeader(){}};
+ const env={...process.env};
+ try{
+  process.env.CRON_SECRET='test-cron-secret';
+  await cron({method:'GET',headers:{authorization:'Bearer wrong'}},result);
+  assert.equal(result.statusCode,401);
+  assert.doesNotMatch(read('api/reminders.js'),/SUPABASE_SECRET_KEY/);
+ }finally{process.env=env}
 });
-test('unión al curso rechaza código incorrecto y no escribe en base de datos',async()=>{
- const {default:join}=await import('../api/join.js');
- const old=process.env.CLASSROOM_INVITE_CODE;process.env.CLASSROOM_INVITE_CODE='private-admin-code';
- try{const r={statusCode:200,status(n){this.statusCode=n;return this},json(v){this.body=v;return this},setHeader(){}};
- await join({method:'POST',headers:{authorization:'Bearer anything'},body:{code:'wrong'}},r);assert.equal(r.statusCode,403);
- }finally{if(old===undefined)delete process.env.CLASSROOM_INVITE_CODE;else process.env.CLASSROOM_INVITE_CODE=old}
-});
-test('la clave secreta nunca se transmite como bearer ni se coloca en archivos de cliente',()=>{
- const service=['api/reminders.js','api/join.js','api/claim-admin.js'].map(read).join('\n');
- assert.doesNotMatch(service,/Authorization:`Bearer \$\{key\}`/);
- for(const file of ['community.mjs','app.js','index.html'])assert.doesNotMatch(read(file),/SUPABASE_SECRET_KEY|VAPID_PRIVATE_KEY|CRON_SECRET|CLASSROOM_INVITE_CODE/);
+test('la clave secreta nunca se coloca en archivos del cliente',()=>{
+ for(const file of ['community.mjs','app.js','index.html'])
+   assert.doesNotMatch(read(file),/SUPABASE_SECRET_KEY|VAPID_PRIVATE_KEY|CRON_SECRET|CLASSROOM_INVITE_CODE/);
 });
 test('client incluye interfaz de publicaciones, edición de administrador e inicio de sesión',()=>{
  const source=read('community.mjs');assert.match(source,/courseNewForm/);assert.match(source,/courseEditForm/);assert.match(source,/courseJoinForm/);assert.match(source,/courseLoginForm/);assert.match(source,/subscribe\(/);
@@ -77,22 +72,19 @@ test('push backend usa exportaciones nombradas de web-push 3.6.7, sin default im
  assert.match(script,/import\('web-push'\)/);
 });
 
-test('la vista previa no anuncia colaboración activa sin claves privadas, admin e invitación',()=>{
+test('la vista previa necesita habilitación explícita y no activa avisos sin VAPID y cron',()=>{
  const original={...process.env};
  const response=()=>({statusCode:200,status(n){this.statusCode=n;return this},setHeader(){},json(v){this.body=v;return this}});
  try{
    process.env.SUPABASE_URL='https://xvoaddorhezxddyaomsu.supabase.co';
    process.env.SUPABASE_PUBLISHABLE_KEY='sb_publishable_sample';
-   delete process.env.SUPABASE_SECRET_KEY;
-   delete process.env.PORTAL_ADMIN_EMAIL;
-   delete process.env.CLASSROOM_INVITE_CODE;
+   delete process.env.PORTAL_FEATURE_ACTIVE;
    let r=response();config({method:'GET'},r);
-   assert.equal(r.body.enabled,false,'no activar con backend incompleto');
+   assert.equal(r.body.enabled,false);
    assert.equal(r.body.pushEnabled,false);
-   process.env.SUPABASE_SECRET_KEY='sb_secret_test_placeholder';
-   process.env.PORTAL_ADMIN_EMAIL='admin@example.cl';
-   process.env.CLASSROOM_INVITE_CODE='clave-test';
+   process.env.PORTAL_FEATURE_ACTIVE='true';
    r=response();config({method:'GET'},r);
-   assert.equal(r.body.enabled,true,'habilitar solo tras configurar toda la base');
+   assert.equal(r.body.enabled,true);
+   assert.equal(r.body.pushEnabled,false);
  }finally{process.env=original}
 });

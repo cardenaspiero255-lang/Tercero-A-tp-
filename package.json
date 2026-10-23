@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "test": "node --test tests/*.test.mjs",
-    "check": "node --check app.js && node --check community.mjs && node --check collab-core.mjs && node --check sw.js && node --check api/reminders.js && node --check api/join.js && node --test tests/*.test.mjs"
+    "check": "node --check app.js && node --check community.mjs && node --check collab-core.mjs && node --check sw.js && node --check api/reminders.js && node --check api/public-config.js && node --test tests/*.test.mjs"
   },
   "dependencies": { "web-push": "3.6.7" }
 }

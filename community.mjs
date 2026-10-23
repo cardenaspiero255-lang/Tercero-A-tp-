@@ -31,8 +31,8 @@ async function loadIdentity(){
  const response=await fetch(`${state.config.supabaseUrl}/auth/v1/user`,{headers:{apikey:state.config.publishableKey,Authorization:`Bearer ${state.session.access_token}`}});
  if(!response.ok){storeSession(null);return}
  state.user=await response.json();
- // Reclamación segura en el servidor: compara correo verificado con un secreto de Vercel.
- await fetch('/api/claim-admin',{method:'POST',headers:{Authorization:`Bearer ${state.session.access_token}`}}).catch(()=>{});
+ // The database verifies email ownership and assigns the admin role only to the designated address.
+ await api('/rest/v1/rpc/portal_claim_admin',{method:'POST',body:{},authenticated:true}).catch(()=>false);
  const [roles,members]=await Promise.all([
  api(`/rest/v1/portal_roles?select=role&user_id=eq.${encodeURIComponent(state.user.id)}`,{authenticated:true}),
  api(`/rest/v1/portal_members?select=user_id&user_id=eq.${encodeURIComponent(state.user.id)}`,{authenticated:true})
@@ -111,8 +111,8 @@ async function login(form){
 }
 async function join(form){
  const code=String(new FormData(form).get('code')||'').trim();await freshSession();
- const response=await fetch('/api/join',{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${state.session?.access_token||''}`},body:JSON.stringify({code})});
- if(!response.ok){const data=await response.json().catch(()=>({}));throw Error(data.error||'El código no es válido')}
+ const joined=await api('/rest/v1/rpc/portal_join_course',{method:'POST',body:{p_code:code},authenticated:true});
+ if(joined!==true)throw Error('El código no es válido');
  await loadIdentity();refreshUI();notify('Ya puedes publicar para el curso ✓');
 }
 async function submitPost(form,edit=false){

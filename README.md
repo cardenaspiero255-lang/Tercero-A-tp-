@@ -1,43 +1,49 @@
-# Portal 3.º Medio A TP — colaboración independiente
+# Portal 3.º Medio A TP — colaboración aislada
 
-Portal escolar con horario, evaluaciones, avisos y recordatorios diarios. Su sistema colaborativo está en una **rama de prueba** y no modifica la web pública hasta completar las verificaciones de seguridad y autenticación.
+Portal escolar que conserva horario, apuntes y tareas personales. La rama `feature/curso-colaborativo-v1` implementa publicaciones compartidas, roles y recordatorios Web Push **solo en pruebas**. No se debe fusionar con `main` sin comprobar inicio de sesión, base de datos y entrega real.
 
-## Base de datos exclusiva
+## Sistema exclusivo del colegio
 
-Supabase: proyecto **Portal 3 Medio A TP**, referencia `xvoaddorhezxddyaomsu`, región São Paulo (sa-east-1). Independiente de GameHub Ultra y de los demás proyectos; nunca reutilizar credenciales ni aplicar este SQL a otra base. Costo inicial confirmado: **US$0 mensuales**, sujeto a límites del plan gratuito.
+- Supabase `Portal 3 Medio A TP` (`xvoaddorhezxddyaomsu`, São Paulo). **No usar GameHub Ultra ni claves de otros proyectos.**
+- Cinco tablas escolares con RLS. Publicaciones legibles sin cuenta; se requiere inicio de sesión verificado y código de invitación para publicarlas.
+- El administrador se reconoce por el correo verificado registrado en `portal_private.config`, tabla no expuesta al navegador. Los compañeros pueden crear publicaciones; solo el administrador puede modificarlas o retirarlas.
+- `supabase/portal.sql` se aplicó primero; `supabase/secure-bootstrap.sql` es **una plantilla** de instalación del acceso seguro, no contiene secretos y no debe ejecutarse con marcadores sin sustituir. La configuración real con hashes de códigos ya está aplicada al proyecto escolar.
+- El acceso de administrador y alumnos usa RPC con usuario autenticado y funciones de servidor PostgreSQL restringidas; no necesita `SUPABASE_SECRET_KEY` ni una clave `service_role` en Vercel.
 
-La migración de `supabase/portal.sql` ya se aplicó al proyecto escolar. Todas las cinco tablas tienen RLS habilitado. Los visitantes ven publicaciones; los alumnos con correo verificado y código de invitación pueden publicar directamente; solo el administrador confirmado puede corregir o retirar publicaciones ajenas.
+## Variables de Vercel
 
-## Configuración requerida antes de habilitar
+Estas variables de entorno se aplican **solo al proyecto escolar**, y de momento **solo en Preview**:
 
-Añadir en **Vercel → proyecto tercero-a-tp- → Environment Variables**, y nunca en GitHub:
+| Clave | Alcance | Estado |
+| --- | --- | --- |
+| `SUPABASE_URL` | Publicable / Preview | Configurada |
+| `SUPABASE_PUBLISHABLE_KEY` | Publicable / Preview | Configurada |
+| `CRON_SECRET` | Privada / Preview | Configurada |
+| `VAPID_PUBLIC_KEY` | Pública / Preview | Configurada |
+| `VAPID_PRIVATE_KEY` | Privada / Preview | Configurada |
+| `PORTAL_ADMIN_EMAIL` | Cifrada / Preview | Configurada como dato de referencia; autorización real en PostgreSQL |
+| `PORTAL_FEATURE_ACTIVE` | Preview | **Desactivada por defecto**, habilitar solo para pruebas del portal |
 
-- `SUPABASE_URL`: URL del proyecto Supabase escolar
-- `SUPABASE_PUBLISHABLE_KEY`: clave publicable del **proyecto escolar**
-- `SUPABASE_SECRET_KEY`: clave privada del proyecto escolar (solo lado servidor)
-- `PORTAL_ADMIN_EMAIL`: correo del administrador **elegido y verificado**
-- `CLASSROOM_INVITE_CODE`: código privado y aleatorio para compañeros
-- `CRON_SECRET`: clave privada del cron diario
-- `VAPID_PUBLIC_KEY` y `VAPID_PRIVATE_KEY`: claves propias de Web Push
+El código de invitación se almacena únicamente mediante un hash SHA-256 dentro de la tabla privada; **no se publica ni se añade al repositorio**. El administrador debe entregarlo por un canal privado a cada compañero.
 
-`/api/public-config` mantendrá el sistema colaborativo **desactivado** hasta que existan los primeros cinco valores. No copiar claves de GameHub Ultra.
+## Acceso por correo (todavía pendiente)
 
-## Validación necesaria antes de fusionar
+Supabase limita su SMTP predeterminado a direcciones pertenecientes a su organización y **2 mensajes/hora**. No sirve para abrir el registro a todo el curso. Un administrador del servicio debe configurar un SMTP propio o un proveedor de autenticación compatible y comprobar la dirección de retorno de Auth (`https://tercero-a-tp.vercel.app/`) en el panel de Supabase, **Authentication → URL Configuration**. No pedir contraseñas, tokens ni claves SMTP en el chat; se ingresan exclusivamente en el panel del proveedor.
 
-- Configurar URLs de redirección de Supabase Auth hacia el dominio real del portal.
-- Configurar un SMTP propio o autenticación compatible. El proveedor de correo predeterminado de Supabase puede enviar invitaciones solo a miembros de la organización; no es apto para todos los estudiantes sin ajuste.
-- Verificar un inicio de sesión real como administrador y otro como alumno.
-- Probar que un alumno no pueda borrar, editar o crear administradores.
-- Probar un envío Web Push real con consentimiento, manejo de cancelación y entrega diaria.
-- Verificar que el Cron protegido no se puede invocar sin autorización.
+Después, probar como administrador y como alumno en dos navegadores separados, incluyendo la recuperación de sesión, publicación, modificación y borrado por roles.
 
-El horario y el progreso local **siguen disponibles** cuando el módulo colaborativo está desactivado.
+## Recordatorios diarios
 
-## Desarrollo
+La ruta `/api/reminders` comprueba el bearer privado `CRON_SECRET`. Selecciona las próximas evaluaciones y reserva en la DB cada suscripción/día mediante `portal_claim_daily_push_jobs` con el mismo secreto. Envía como máximo un resumen diario por suscriptor, manejando las suscripciones caducadas. El plan Vercel Hobby ejecuta la tarea diaria con margen horario; **no garantiza recepción ni minuto exacto**. Se requiere permiso explícito del dispositivo. No se ha probado todavía una entrega real.
 
-```bash
-npm install
+## Seguridad
+
+Los asesores de Supabase pueden señalar cuatro funciones `SECURITY DEFINER` invocables mediante RPC; **está previsto** por el diseño y solo hacen operaciones limitadas después de autenticar al usuario y verificar correo/código/hash secreto. Antes de habilitar producción, hacer pruebas de integración adversariales y considerar mover estas funciones a una capa backend más aislada si se detecta riesgo.
+
+## Pruebas
+
+```sh
 npm run check
 ```
 
-El cron está definido en `vercel.json` como una tarea UTC diaria; Vercel Hobby no garantiza el minuto exacto de ejecución.
+El panel de tareas local sigue funcionando si la colaboración está deshabilitada.
