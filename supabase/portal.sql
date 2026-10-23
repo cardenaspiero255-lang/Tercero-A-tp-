@@ -4,7 +4,7 @@
 
 create table if not exists public.portal_roles (
   user_id uuid primary key references auth.users(id) on delete cascade,
-  role text not null default 'student' check (role in ('admin')),
+  role text not null check (role in ('admin')),
   created_at timestamptz not null default now()
 );
 create table if not exists public.portal_members (

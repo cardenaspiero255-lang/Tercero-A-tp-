@@ -24,7 +24,7 @@ export default async function handler(req,res){
   if(!digest)return res.status(200).json({sent:0,reason:'Sin evaluaciones próximas'});
   const subscriptions=await db('portal_push_subscriptions?select=id,subscription&limit=500');
   const date=chileDay(new Date());
-  const {default:webpush}=await import('web-push');
+  const webpush=await import('web-push');
   webpush.setVapidDetails('https://tercero-a-tp.vercel.app',process.env.VAPID_PUBLIC_KEY,process.env.VAPID_PRIVATE_KEY);
   let sent=0,failed=0;
   // At-most-once per subscriber and Chile calendar day; duplicates are ignored by the database.

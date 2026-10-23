@@ -70,3 +70,9 @@ test('la clave secreta nunca se transmite como bearer ni se coloca en archivos d
 test('client incluye interfaz de publicaciones, edición de administrador e inicio de sesión',()=>{
  const source=read('community.mjs');assert.match(source,/courseNewForm/);assert.match(source,/courseEditForm/);assert.match(source,/courseJoinForm/);assert.match(source,/courseLoginForm/);assert.match(source,/subscribe\(/);
 });
+
+test('push backend usa exportaciones nombradas de web-push 3.6.7, sin default import inexistente',()=>{
+ const script=read('api/reminders.js');
+ assert.doesNotMatch(script,/\{default:webpush\}/);
+ assert.match(script,/import\('web-push'\)/);
+});
