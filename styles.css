@@ -6,3 +6,12 @@
 @media(max-width:480px){.hero h1{font-size:30px}.hero p{font-size:12px}.stat-foot{font-size:10px}.stat-icon{display:none}.slot{grid-template-columns:70px 4px minmax(0,1fr) auto;gap:9px;padding:11px 9px}.slot-teacher{font-size:10px}.form.two{grid-template-columns:1fr}.day-tabs{gap:5px}.day-tab{padding:8px 10px;font-size:11px}.countdown .cd-unit{min-width:49px}.countdown .cd-unit strong{font-size:21px}}
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{scroll-behavior:auto!important;animation:none!important;transition:none!important}}
 @media print{.sidebar,.topbar,.bottom-nav,.footer,.btn,.form,.filter-row,.no-print{display:none!important}.shell{display:block}main{padding:0}.panel{box-shadow:none;break-inside:avoid}body{background:white;color:black}.print-only{display:block}.slot{break-inside:avoid} }
+/* Módulo comunitario: publicación y gestión compartida */
+.community-post{border:1px solid var(--border);background:var(--panel2);border-radius:14px;padding:18px;margin:12px 0;overflow-wrap:anywhere}
+.community-post-head,.community-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.community-post h3{margin:5px 0 9px;font-size:1.1rem}
+.community-post p{white-space:pre-wrap;overflow-wrap:anywhere}
+.community-actions{margin-top:12px}
+.community-form{margin:12px 0 18px}
+.community-form input,.community-form select,.community-form textarea{width:100%;max-width:100%}
+@media(max-width:640px){.community-post{padding:14px}}
