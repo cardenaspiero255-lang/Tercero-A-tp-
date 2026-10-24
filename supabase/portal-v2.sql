@@ -110,6 +110,20 @@ create policy portal_polls_admin_update on public.portal_polls for update to aut
  using(exists(select 1 from public.portal_roles r where r.user_id=(select auth.uid()) and r.role='admin'))
  with check(exists(select 1 from public.portal_roles r where r.user_id=(select auth.uid()) and r.role='admin'));
 
+-- Mitigar spam de encuestas antes de permitir varios alumnos.
+create or replace function public.portal_poll_rate_guard() returns trigger
+language plpgsql security invoker set search_path = '' as $pollrate$
+begin
+ if (select count(*) from public.portal_polls p
+     where p.created_by=new.created_by and p.created_at>now()-interval '24 hours')>=3 then
+  raise exception 'Máximo tres encuestas por 24 horas';
+ end if;
+ return new;
+end; $pollrate$;
+revoke all on function public.portal_poll_rate_guard() from public,anon,authenticated;
+create trigger portal_poll_rate before insert on public.portal_polls
+for each row execute function public.portal_poll_rate_guard();
+
 create table public.portal_poll_votes(
  poll_id uuid not null references public.portal_polls(id) on delete cascade,
  user_id uuid not null references auth.users(id) on delete cascade,
