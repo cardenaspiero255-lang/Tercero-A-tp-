@@ -80,11 +80,18 @@ function form(post=null){
  </form>`;
 }
 function accountUI(){
- if(!state.user)return `<section class="panel"><h2>🔑 Participar como compañero</h2><p>Para publicar o recibir avisos diarios, entra con tu correo. Te enviamos un enlace de acceso; no hace falta contraseña.</p><form id="courseLoginForm" class="form"><label>Correo electrónico<input type="email" name="email" maxlength="254" required autocomplete="email" placeholder="tu-correo@ejemplo.cl"></label><button class="btn btn-primary" type="submit">Enviar enlace a mi correo</button></form><p class="small-label">Para evitar publicaciones de personas ajenas al curso, después necesitas el código de invitación del administrador.</p></section>`;
+ if(!state.user)return `<section class="panel" id="course-account"><h2>🔑 Participar como compañero</h2><p>Para publicar o recibir avisos diarios, entra con tu correo. Te enviamos un enlace de acceso; no hace falta contraseña.</p><form id="courseLoginForm" class="form"><label>Correo electrónico<input type="email" name="email" maxlength="254" required autocomplete="email" placeholder="tu-correo@ejemplo.cl"></label><button class="btn btn-primary" type="submit">Enviar enlace a mi correo</button></form><p class="small-label">Para evitar publicaciones de personas ajenas al curso, después necesitas el código de invitación del administrador.</p></section>`;
  const role=state.role==='admin'?'🛡️ Administrador':state.member?'✍️ Compañero colaborador':'👀 Visitante registrado';
- return `<section class="panel"><h2>${role}</h2><p class="small-label">Sesión: ${esc(state.user.email||'')} <button type="button" class="btn btn-sm" data-course-action="logout">Salir</button></p>
+ return `<section class="panel" id="course-account"><h2>${role}</h2><p class="small-label">Sesión: ${esc(state.user.email||'')} <button type="button" class="btn btn-sm" data-course-action="logout">Salir</button></p>
  ${!state.member?`<p>Para poder publicar, pide el código privado de invitación al administrador.</p><form id="courseJoinForm" class="form"><label>Código de curso<input name="code" type="password" required minlength="6" autocomplete="off" placeholder="Código compartido por tu curso"></label><button type="submit" class="btn btn-primary">Entrar al curso</button></form>`:''}
- ${state.member?`<h3>🔔 Recordatorios diarios</h3><p class="small-label">Puedes elegir recibir en este dispositivo un aviso diario cuando haya evaluaciones próximas. Las notificaciones no se activan automáticamente.</p>${state.config.pushEnabled?'<div class="community-actions"><button class="btn btn-primary" data-course-action="subscribe">Activar avisos diarios</button><button class="btn" data-course-action="unsubscribe">Desactivar en este dispositivo</button></div>':'<div class="local-banner">Los avisos automáticos estarán disponibles cuando se configuren las claves de notificaciones del servidor.</div>'}`:''}</section>`;
+ </section>`;
+}
+function notificationUI(){
+ const intro='<h2>🔔 Notificaciones del curso</h2><p class="small-label">Puedes recibir recordatorios de evaluaciones en este dispositivo, solo con tu permiso.</p>';
+ if(!state.user)return `<section class="panel" id="course-notifications">${intro}<p>Inicia sesión con tu correo desde Comunidad para activar los avisos.</p><button type="button" class="btn" data-course-action="focus-login">Ir a iniciar sesión</button></section>`;
+ if(!state.member)return `<section class="panel" id="course-notifications">${intro}<p>Para activar los avisos, primero debes unirte al curso con el código privado.</p></section>`;
+ if(!state.config.pushEnabled)return `<section class="panel" id="course-notifications">${intro}<div class="local-banner">Los avisos automáticos están pendientes de configuración.</div></section>`;
+ return `<section class="panel" id="course-notifications">${intro}<div class="community-actions"><button type="button" class="btn btn-primary" data-course-action="subscribe">Activar notificaciones</button><button type="button" class="btn" data-course-action="unsubscribe">Desactivar en este dispositivo</button></div><p class="small-label">Los avisos se enviarán cuando haya evaluaciones próximas. El envío diario no tiene horario exacto garantizado.</p></section>`;
 }
 function render(){
  if(state.loading)return '<section class="panel"><h2>📚 Comunidad del curso</h2><p>Conectando...</p></section>';
@@ -93,6 +100,7 @@ function render(){
  return `<div class="page-head"><div class="eyebrow">EN COMÚN · 3° MEDIO A TP</div><h1>📚 Comunidad del curso</h1><p class="sub">Evaluaciones y avisos publicados directamente por tus compañeros. El administrador puede corregir o retirar cualquiera.</p></div>
  ${state.error?`<div class="local-banner">No se pudieron cargar todos los datos: ${esc(state.error)}</div>`:''}
  <div class="grid columns"><section class="panel"><div class="panel-head"><h2>◷ Próximas evaluaciones</h2><button class="btn btn-sm" data-course-action="refresh">Actualizar</button></div>${upcoming.length?upcoming.map(card).join(''):empty('No hay evaluaciones próximas','Cuando un compañero registre una prueba, aparecerá aquí.','◷')}</section>${accountUI()}</div>
+ ${notificationUI()}
  ${state.member?`<section class="panel"><h2>+ Publicar para el curso</h2><p class="small-label">Máximo 5 publicaciones por compañero cada 24 horas. Usa fechas verificadas.</p>${form()}</section>`:''}
  <section class="panel"><h2>Publicaciones compartidas</h2>${state.posts.length?state.posts.map(card).join(''):empty('Aún no hay publicaciones','Puedes ser el primero en ayudar al curso.','📚')}</section>`;
 }
@@ -148,7 +156,7 @@ document.addEventListener('click',async event=>{
  const edit=event.target.closest('[data-course-edit]');if(edit){state.editId=state.editId===edit.dataset.courseEdit?null:edit.dataset.courseEdit;refreshUI();return}
  const remove=event.target.closest('[data-course-delete]');if(remove){try{await del(remove.dataset.courseDelete)}catch(e){notify(e.message)}return}
  const action=event.target.closest('[data-course-action]');if(!action)return;
- try{const a=action.dataset.courseAction;if(a==='refresh')await loadPosts(true);if(a==='subscribe')await subscribe();if(a==='unsubscribe')await unsubscribe();if(a==='logout'){if(state.session){await fetch(`${state.config.supabaseUrl}/auth/v1/logout`,{method:'POST',headers:{apikey:state.config.publishableKey,Authorization:`Bearer ${state.session.access_token}`}}).catch(()=>{});}storeSession(null);state.user=null;state.role='visitor';state.member=false;refreshUI();}}
+ try{const a=action.dataset.courseAction;if(a==='refresh')await loadPosts(true);if(a==='focus-login'){const input=document.querySelector('#courseLoginForm input[type="email"]');input?.focus();input?.scrollIntoView?.({behavior:'smooth',block:'center'});}if(a==='subscribe')await subscribe();if(a==='unsubscribe')await unsubscribe();if(a==='logout'){if(state.session){await fetch(`${state.config.supabaseUrl}/auth/v1/logout`,{method:'POST',headers:{apikey:state.config.publishableKey,Authorization:`Bearer ${state.session.access_token}`}}).catch(()=>{});}storeSession(null);state.user=null;state.role='visitor';state.member=false;refreshUI();}}
  catch(err){notify(err.message||'No se pudo completar la acción')}
 });
 window.PortalCommunity={render,preview,onOpen(){loadPosts().catch(e=>{state.error=e.message;refreshUI()})}};
