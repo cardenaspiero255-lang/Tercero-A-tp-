@@ -1,4 +1,4 @@
-import {validatePost,daysToExam,selectUpcoming} from './collab-core.mjs';
+import {validatePost,daysToExam,selectUpcoming,shouldOfferNotificationWelcome} from './collab-core.mjs';
 const SKEY='portal-3a-collab-session-v1';
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const state={config:null,posts:[],user:null,session:null,role:'visitor',member:false,loading:true,error:'',editId:null,lastLoad:0};
@@ -58,7 +58,110 @@ async function initialize(){
   }else storeSession(getSaved());
   await Promise.all([loadIdentity(),loadPosts(true)]);
  }catch(err){state.error=err.message||'No se pudo conectar al curso';}
- finally{state.loading=false;refreshUI()}
+ finally{state.loading=false;refreshUI();showNotificationWelcome();void syncAcceptedSubscription()}
+}
+
+function welcomeChoice(){try{return localStorage.getItem('portal-3a-notification-welcome-v1')||''}catch{return ''}}
+function rememberWelcome(choice){try{localStorage.setItem('portal-3a-notification-welcome-v1',choice)}catch{}}
+function goToCommunityLogin(){
+ const link=document.querySelector('#bottomNav [data-page="community"]')||document.querySelector('#nav [data-page="community"]');
+ link?.click();
+ document.querySelector('#courseLoginForm input[type="email"]')?.focus();
+}
+async function syncAcceptedSubscription(){
+ if(welcomeChoice()!=='accepted'||!state.user||!state.member||!state.config?.pushEnabled)return;
+ if(!('Notification' in window)||Notification.permission!=='granted')return;
+ try{await registerPushSubscription()}catch{/* The Community button remains available to retry. */}
+}
+function showNotificationWelcome(force=false){
+ const permission='Notification' in window?Notification.permission:'unsupported';
+ if(!force&&!shouldOfferNotificationWelcome({enabled:active(),pushEnabled:state.config?.pushEnabled,permission,seen:!!welcomeChoice()}))return;
+ if(document.querySelector('#notificationWelcome')||!state.config?.pushEnabled)return;
+ const previousFocus=document.activeElement;
+ const overlay=document.createElement('div');
+ overlay.id='notificationWelcome';
+ overlay.className='notification-welcome-backdrop';
+ overlay.innerHTML=`<section class="notification-welcome-dialog" role="dialog" aria-modal="true" aria-labelledby="notificationWelcomeTitle" aria-describedby="notificationWelcomeDescription">
+  <div class="notification-welcome-icon" aria-hidden="true">🔔</div>
+  <div class="notification-welcome-kicker">PORTAL · 3.º MEDIO A TP</div>
+  <h2 id="notificationWelcomeTitle">¿Quieres recibir avisos del curso?</h2>
+  <p id="notificationWelcomeDescription">Recibe recordatorios de evaluaciones próximas directamente en tu teléfono. Tú decides.</p>
+  <p class="notification-welcome-detail" id="notificationWelcomeHint" role="status" aria-live="polite">Al pulsar «Activar», Chrome te preguntará si permites las notificaciones.</p>
+  <div class="notification-welcome-help" id="notificationWelcomeHelp" hidden><strong>Cómo habilitarlas en Android</strong><ol><li>Abre esta página en Chrome, fuera del modo incógnito.</li><li>Toca el icono de controles junto a la dirección web.</li><li>Entra en <b>Permisos → Notificaciones → Permitir</b>.</li><li>Regresa a la página y pulsa «Activar notificaciones».</li></ol><small>Si todavía no aparecen, revisa también los permisos de notificación de Chrome en los ajustes de Android.</small></div>
+  <div class="notification-welcome-actions"><button type="button" class="btn btn-primary" data-welcome-action="allow">Activar notificaciones</button><button type="button" class="btn" data-welcome-action="later">Ahora no</button></div>
+  <p class="notification-welcome-footnote">Sin tu permiso no se enviarán avisos. Para recibirlos, también tendrás que iniciar sesión y pertenecer al curso.</p>
+ </section>`;
+ const hint=overlay.querySelector('#notificationWelcomeHint');
+ const help=overlay.querySelector('#notificationWelcomeHelp');
+ const primary=overlay.querySelector('[data-welcome-action="allow"]');
+ const originalOverflow=document.body.style.overflow;
+ const close=()=>{
+  document.removeEventListener('keydown',onKeys);
+  overlay.remove();
+  document.body.style.overflow=originalOverflow;
+  if(previousFocus?.isConnected)previousFocus.focus?.();
+ };
+ const showGuide=(message)=>{
+  hint.textContent=message;
+  help.hidden=false;
+  primary.textContent='Comprobar permiso de nuevo';
+ };
+ const onKeys=(event)=>{
+  if(event.key==='Escape'){event.preventDefault();rememberWelcome('dismissed');close();return}
+  if(event.key==='Tab'){
+   const buttons=[...overlay.querySelectorAll('button:not([disabled])')];
+   if(!buttons.length)return;
+   if(event.shiftKey&&document.activeElement===buttons[0]){event.preventDefault();buttons.at(-1).focus()}
+   if(!event.shiftKey&&document.activeElement===buttons.at(-1)){event.preventDefault();buttons[0].focus()}
+  }
+ };
+ overlay.addEventListener('click',async event=>{
+  const action=event.target.closest('[data-welcome-action]')?.dataset.welcomeAction;
+  if(action==='later'){rememberWelcome('dismissed');close();return}
+  if(action!=='allow'||primary.disabled)return;
+  if(!('Notification' in window)||!('serviceWorker' in navigator)||!('PushManager' in window)){
+   showGuide('Este navegador no admite las notificaciones necesarias. Usa Chrome actualizado en Android.');
+   return;
+  }
+  if(Notification.permission === 'denied'){
+   showGuide('Chrome tiene bloqueado este permiso. Cámbialo en los ajustes del sitio y vuelve a comprobarlo.');
+   return;
+  }
+  // IMPORTANT: requestPermission is invoked synchronously inside this click event,
+  // before any await, because browsers require a real user gesture.
+  let request;
+  try{request=Notification.permission==='granted'?'granted':Notification.requestPermission()}
+  catch{showGuide('Chrome no pudo abrir la solicitud de permisos. Revisa los ajustes del sitio.');return}
+  primary.disabled=true;
+  try{
+   const result=await request;
+   if(result!=='granted'){
+    showGuide('No se concedió el permiso. Puedes habilitarlo desde los ajustes de Chrome cuando quieras.');
+    return;
+   }
+   rememberWelcome('accepted');
+   if(state.member && state.user){
+    await registerPushSubscription();
+    notify('Notificaciones del curso activadas en este dispositivo ✓');
+    close();
+   }else{
+    close();
+    goToCommunityLogin();
+    notify('Permiso concedido. Inicia sesión en Comunidad para completar la activación.');
+   }
+  }catch(error){
+   showGuide('El permiso está concedido, pero no se completó la suscripción. Entra a Comunidad y prueba de nuevo.');
+  }finally{if(primary.isConnected)primary.disabled=false}
+ });
+ document.body.appendChild(overlay);
+ document.body.style.overflow='hidden';
+ document.addEventListener('keydown',onKeys);
+ primary.focus();
+ if(permission==='denied'){
+  showGuide('Ya rechazaste o bloqueaste las notificaciones de este sitio en Chrome. Cambia el permiso para activarlas.');
+ }else if(permission==='unsupported'){
+  showGuide('Este navegador no admite notificaciones web. Prueba desde Chrome en Android.');
+ }
 }
 function card(p){
  const n=p.due_at&&p.kind==='exam'?daysToExam(p.due_at):null;
@@ -91,6 +194,7 @@ function notificationUI(){
  if(!state.user)return `<section class="panel" id="course-notifications">${intro}<p>Inicia sesión con tu correo desde Comunidad para activar los avisos.</p><button type="button" class="btn" data-course-action="focus-login">Ir a iniciar sesión</button></section>`;
  if(!state.member)return `<section class="panel" id="course-notifications">${intro}<p>Para activar los avisos, primero debes unirte al curso con el código privado.</p></section>`;
  if(!state.config.pushEnabled)return `<section class="panel" id="course-notifications">${intro}<div class="local-banner">Los avisos automáticos están pendientes de configuración.</div></section>`;
+ if(typeof Notification!=='undefined'&&Notification.permission==='denied')return `<section class="panel" id="course-notifications">${intro}<div class="local-banner">Chrome bloqueó este permiso. Debes permitir las notificaciones de este sitio desde los ajustes del navegador.</div><button type="button" class="btn btn-primary" data-course-action="notification-help">Ver cómo activarlas</button></section>`;
  return `<section class="panel" id="course-notifications">${intro}<div class="community-actions"><button type="button" class="btn btn-primary" data-course-action="subscribe">Activar notificaciones</button><button type="button" class="btn" data-course-action="unsubscribe">Desactivar en este dispositivo</button></div><p class="small-label">Los avisos se enviarán cuando haya evaluaciones próximas. El envío diario no tiene horario exacto garantizado.</p></section>`;
 }
 function render(){
@@ -132,20 +236,32 @@ async function submitPost(form,edit=false){
 }
 async function del(id){if(state.role!=='admin')throw Error('Sin permisos de administrador');if(!confirm('¿Retirar esta publicación de todo el curso?'))return;await api(`/rest/v1/portal_posts?id=eq.${encodeURIComponent(id)}`,{authenticated:true,method:'PATCH',body:{is_deleted:true}});await loadPosts(true);notify('Publicación retirada')}
 function decodeVapid(key){const pad='='.repeat((4-key.length%4)%4);const str=atob((key+pad).replace(/-/g,'+').replace(/_/g,'/'));return Uint8Array.from(str,c=>c.charCodeAt(0))}
-async function subscribe(){
+async function registerPushSubscription(){
  if(!state.member||!state.user)throw Error('Únete al curso primero');
  if(!('serviceWorker'in navigator)||!('PushManager'in window)||!('Notification'in window))throw Error('Este navegador no permite notificaciones web.');
- const permission=await Notification.requestPermission();if(permission!=='granted')throw Error('No se concedió permiso para notificaciones.');
+ if(Notification.permission!=='granted')throw Error('Permiso de notificaciones no concedido');
  const worker=await navigator.serviceWorker.ready;
  let sub=await worker.pushManager.getSubscription();if(!sub)sub=await worker.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:decodeVapid(state.config.vapidPublicKey)});
  await api('/rest/v1/portal_push_subscriptions?on_conflict=user_id,endpoint',{method:'POST',authenticated:true,headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:{user_id:state.user.id,endpoint:sub.endpoint,subscription:sub.toJSON()}});
+}
+async function subscribe(){
+ if(!state.member||!state.user)throw Error('Únete al curso primero');
+ if(!('Notification'in window))throw Error('Este navegador no admite notificaciones web');
+ if(Notification.permission==='denied'){
+  showNotificationWelcome(true);
+  throw Error('Chrome bloqueó las notificaciones. Revisa los permisos del sitio.');
+ }
+ const permission=Notification.permission==='granted'?'granted':await Notification.requestPermission();
+ if(permission!=='granted')throw Error('No se concedió permiso. Puedes cambiarlo en los ajustes del sitio.');
+ await registerPushSubscription();
+ rememberWelcome('accepted');
  notify('Recordatorios diarios activados en este dispositivo ✓');
 }
 async function unsubscribe(){
  if(!('serviceWorker'in navigator))return;
- const worker=await navigator.serviceWorker.ready, sub=await worker.pushManager.getSubscription();if(!sub){notify('No había avisos activos en este dispositivo');return}
+ const worker=await navigator.serviceWorker.ready, sub=await worker.pushManager.getSubscription();if(!sub){rememberWelcome('dismissed');notify('No había avisos activos en este dispositivo');return}
  await api(`/rest/v1/portal_push_subscriptions?endpoint=eq.${encodeURIComponent(sub.endpoint)}`,{authenticated:true,method:'DELETE'});
- await sub.unsubscribe();notify('Notificaciones desactivadas');
+ await sub.unsubscribe();rememberWelcome('dismissed');notify('Notificaciones desactivadas');
 }
 document.addEventListener('submit',async event=>{
  if(!['courseLoginForm','courseJoinForm','courseNewForm','courseEditForm'].includes(event.target?.id))return;
@@ -156,7 +272,7 @@ document.addEventListener('click',async event=>{
  const edit=event.target.closest('[data-course-edit]');if(edit){state.editId=state.editId===edit.dataset.courseEdit?null:edit.dataset.courseEdit;refreshUI();return}
  const remove=event.target.closest('[data-course-delete]');if(remove){try{await del(remove.dataset.courseDelete)}catch(e){notify(e.message)}return}
  const action=event.target.closest('[data-course-action]');if(!action)return;
- try{const a=action.dataset.courseAction;if(a==='refresh')await loadPosts(true);if(a==='focus-login'){const input=document.querySelector('#courseLoginForm input[type="email"]');input?.focus();input?.scrollIntoView?.({behavior:'smooth',block:'center'});}if(a==='subscribe')await subscribe();if(a==='unsubscribe')await unsubscribe();if(a==='logout'){if(state.session){await fetch(`${state.config.supabaseUrl}/auth/v1/logout`,{method:'POST',headers:{apikey:state.config.publishableKey,Authorization:`Bearer ${state.session.access_token}`}}).catch(()=>{});}storeSession(null);state.user=null;state.role='visitor';state.member=false;refreshUI();}}
+ try{const a=action.dataset.courseAction;if(a==='refresh')await loadPosts(true);if(a==='focus-login'){const input=document.querySelector('#courseLoginForm input[type="email"]');input?.focus();input?.scrollIntoView?.({behavior:'smooth',block:'center'});}if(a==='notification-help')showNotificationWelcome(true);if(a==='subscribe')await subscribe();if(a==='unsubscribe')await unsubscribe();if(a==='logout'){if(state.session){await fetch(`${state.config.supabaseUrl}/auth/v1/logout`,{method:'POST',headers:{apikey:state.config.publishableKey,Authorization:`Bearer ${state.session.access_token}`}}).catch(()=>{});}storeSession(null);state.user=null;state.role='visitor';state.member=false;refreshUI();}}
  catch(err){notify(err.message||'No se pudo completar la acción')}
 });
 window.PortalCommunity={render,preview,onOpen(){loadPosts().catch(e=>{state.error=e.message;refreshUI()})}};

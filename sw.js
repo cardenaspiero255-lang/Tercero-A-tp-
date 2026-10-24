@@ -1,4 +1,4 @@
-const CACHE='portal-3a-web-v3';
+const CACHE='portal-3a-web-v4';
 const PUBLIC_ASSETS=['./','./index.html','./styles.css','./app.js','./community.mjs','./collab-core.mjs','./icon.svg','./manifest.webmanifest'];
 const NAMES=new Set(PUBLIC_ASSETS.slice(1).map(s=>s.slice(2)));
 const NETWORK_FIRST=new Set(['app.js','community.mjs','collab-core.mjs','styles.css']);

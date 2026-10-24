@@ -38,3 +38,9 @@ export function makeDigest(posts,now=new Date()){
   const body=`${time} para ${first.subject} (${when}). ${top.length>1?`Hay ${top.length-1} evaluación(es) más próximas. `:''}Estudia y revisa el portal del curso.`;
   return {title:'📚 Recordatorio de evaluaciones',body, url:'/'};
 }
+
+// A first-visit explanation precedes the browser permission dialog.
+// A blocked site still needs instructions, but a prior dismissal is respected.
+export function shouldOfferNotificationWelcome({enabled,pushEnabled,permission,seen}={}){
+ return Boolean(enabled && pushEnabled && !seen && permission!=='granted');
+}
