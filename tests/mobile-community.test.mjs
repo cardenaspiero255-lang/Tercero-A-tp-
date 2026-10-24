@@ -34,3 +34,26 @@ test('el service worker sale de cache v2 y da prioridad a scripts actuales',()=>
   assert.match(worker,/u\.pathname\.includes\('\/api\/'\)/);
   assert.match(worker,/Authorization/);
 });
+
+test('ruta inicial abre Comunidad con hash y con tokens de autenticación',()=>{
+ const source=app.slice(app.indexOf('function initialPage('),app.indexOf('let state=load();'));
+ const initialPage=new Function('window',`${source};return initialPage;`)({location:{hash:''}});
+ assert.equal(initialPage('#comunidad'),'community');
+ assert.equal(initialPage('#community'),'community');
+ assert.equal(initialPage('#access_token=abc&refresh_token=def'),'community');
+ assert.equal(initialPage('#tareas'),'tasks');
+ assert.equal(initialPage(''),'home');
+});
+
+test('notificaciones piden inicio de sesión al visitante y permiten activación al administrador',()=>{
+ const source=community.slice(community.indexOf('function notificationUI(){'),community.indexOf('function render(){'));
+ const view=state=>new Function('state',`${source};return notificationUI();`)(state);
+ const guest=view({user:null,member:false,config:{pushEnabled:true}});
+ assert.match(guest,/Ir a iniciar sesión/);
+ assert.doesNotMatch(guest,/data-course-action="subscribe"/);
+ const admin=view({user:{email:'cardenaspiero255@gmail.com'},member:true,config:{pushEnabled:true}});
+ assert.match(admin,/Activar notificaciones/);
+ assert.match(admin,/data-course-action="subscribe"/);
+ const noPush=view({user:{email:'cardenaspiero255@gmail.com'},member:true,config:{pushEnabled:false}});
+ assert.doesNotMatch(noPush,/data-course-action="subscribe"/);
+});
