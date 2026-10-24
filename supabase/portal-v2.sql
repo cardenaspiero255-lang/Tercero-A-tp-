@@ -54,7 +54,7 @@ create policy portal_dm_sender_insert on public.portal_messages for insert to au
 -- Avoid policy recursion: rate control belongs in a trigger, not an INSERT policy
 -- that recursively selects the same RLS table.
 create or replace function public.portal_message_rate_guard() returns trigger
-language plpgsql security invoker set search_path = '' as $
+language plpgsql security invoker set search_path = '' as  $
 begin
  if (select count(*) from public.portal_messages m
      where m.sender_id=new.sender_id and m.sent_at>now()-interval '60 seconds')>=4 then
