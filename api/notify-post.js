@@ -22,7 +22,10 @@ export default async function handler(req,res){
  const auth=req.headers?.authorization||'';
  if(!auth.startsWith('Bearer ')||auth.length<50)return res.status(401).json({error:'Inicio de sesión requerido'});
  const token=auth.slice(7);
- const raw=typeof req.body==='string'?JSON.parse(req.body||'{}'):req.body||{};
+ let raw;
+ try{raw=typeof req.body==='string'?JSON.parse(req.body||'{}'):req.body||{}}
+ catch{return res.status(400).json({error:'JSON inválido'})}
+ if(!raw||typeof raw!=='object'||Array.isArray(raw))return res.status(400).json({error:'Solicitud inválida'});
  if(!POST_ID.test(String(raw.post_id||'')))return res.status(400).json({error:'Publicación inválida'});
  try{
   const verify=await fetch(process.env.SUPABASE_URL+'/auth/v1/user',{headers:{apikey:process.env.SUPABASE_PUBLISHABLE_KEY,Authorization:'Bearer '+token}});
