@@ -1,11 +1,13 @@
 {
   "name": "portal-3medio-a-tp",
-  "version": "1.1.0",
+  "version": "2.0.0",
   "private": true,
   "type": "module",
   "scripts": {
     "test": "node --test tests/*.test.mjs",
-    "check": "node --check app.js && node --check community.mjs && node --check collab-core.mjs && node --check sw.js && node --check api/reminders.js && node --check api/public-config.js && node --test tests/*.test.mjs"
+    "check": "node --check app.js && node --check community.mjs && node --check collab-core.mjs && node --check extras-core.mjs && node --check extras-ui.mjs && node --check extras.mjs && node --check extras-calendar.mjs && node --check extras-polls.mjs && node --check extras-materials.mjs && node --check extras-messages.mjs && node --check extras-stats.mjs && node --check extras-sync.mjs && node --check sw.js && node --check api/reminders.js && node --check api/public-config.js && node --check api/notify-post.js && node --test tests/*.test.mjs"
   },
-  "dependencies": { "web-push": "3.6.7" }
+  "dependencies": {
+    "web-push": "3.6.7"
+  }
 }

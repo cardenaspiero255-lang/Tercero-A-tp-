@@ -1,4 +1,5 @@
 import {validatePost,daysToExam,selectUpcoming,shouldOfferNotificationWelcome} from './collab-core.mjs';
+import {renderExtraHub,renderExtra,onExtraOpen,onExtrasAuthenticated,renderPersonalSync} from './extras.mjs';
 const SKEY='portal-3a-collab-session-v1';
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const state={config:null,posts:[],user:null,session:null,role:'visitor',member:false,loading:true,error:'',editId:null,lastLoad:0};
@@ -58,7 +59,7 @@ async function initialize(){
   }else storeSession(getSaved());
   await Promise.all([loadIdentity(),loadPosts(true)]);
  }catch(err){state.error=err.message||'No se pudo conectar al curso';}
- finally{state.loading=false;refreshUI();showNotificationWelcome();void syncAcceptedSubscription()}
+ finally{state.loading=false;refreshUI();showNotificationWelcome();void syncAcceptedSubscription();void onExtrasAuthenticated()}
 }
 
 function welcomeChoice(){try{return localStorage.getItem('portal-3a-notification-welcome-v1')||''}catch{return ''}}
@@ -168,16 +169,16 @@ function card(p){
  const date=n===null?'':n===0?'Hoy':n===1?'Mañana':n>1?`Faltan ${n} días`:'Fecha pasada';
  const dateText=p.due_at?new Intl.DateTimeFormat('es-CL',{day:'numeric',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit',timeZone:'America/Santiago'}).format(new Date(p.due_at)):'';
  const edit=state.role==='admin'&&state.editId===p.id;
- return `<article class="community-post"><div class="community-post-head"><span class="tag">${p.kind==='exam'?'📚 Evaluación':'📢 Aviso'}</span>${date?`<span class="tag">${esc(date)}</span>`:''}</div><h3>${esc(p.title)}</h3><p class="small-label">${esc(p.subject||'General')}${dateText?' · '+esc(dateText):''}</p>${p.description?`<p>${esc(p.description)}</p>`:''}${state.role==='admin'?`<div class="community-actions"><button class="btn btn-sm" data-course-edit="${esc(p.id)}">${edit?'Cancelar':'✎ Corregir'}</button><button class="btn btn-sm" data-course-delete="${esc(p.id)}">✕ Eliminar</button></div>`:''}${edit?form(p):''}</article>`;
+ return `<article class="community-post"><div class="community-post-head"><span class="tag">${p.kind==='exam'?'📚 Evaluación':p.kind==='activity'?'📌 Actividad':'📢 Aviso'}</span>${date?`<span class="tag">${esc(date)}</span>`:''}</div><h3>${esc(p.title)}</h3><p class="small-label">${esc(p.subject||'General')}${dateText?' · '+esc(dateText):''}</p>${p.description?`<p>${esc(p.description)}</p>`:''}${state.role==='admin'?`<div class="community-actions"><button class="btn btn-sm" data-course-edit="${esc(p.id)}">${edit?'Cancelar':'✎ Corregir'}</button><button class="btn btn-sm" data-course-delete="${esc(p.id)}">✕ Eliminar</button></div>`:''}${edit?form(p):''}</article>`;
 }
 function isoLocal(s){if(!s)return '';const d=new Date(s);if(!Number.isFinite(d.valueOf()))return '';const pad=x=>String(x).padStart(2,'0');return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;}
 function form(post=null){
  const editing=Boolean(post),kind=post?.kind||'exam';
  return `<form id="${editing?'courseEditForm':'courseNewForm'}" ${editing?`data-id="${esc(post.id)}"`:''} class="form community-form">
- <label>Tipo<select name="kind"><option value="exam" ${kind==='exam'?'selected':''}>Evaluación</option><option value="notice" ${kind==='notice'?'selected':''}>Aviso</option></select></label>
+ <label>Tipo<select name="kind"><option value="exam" ${kind==='exam'?'selected':''}>Evaluación</option><option value="notice" ${kind==='notice'?'selected':''}>Aviso</option><option value="activity" ${kind==='activity'?'selected':''}>Actividad o entrega</option></select></label>
  <label>Título<input name="title" required minlength="3" maxlength="120" value="${esc(post?.title||'')}" placeholder="Prueba de Lenguaje"></label>
  <label>Asignatura<select name="subject"><option value="General">General</option>${['Lenguaje','Matemática','Inglés','Filosofía','Educación Física','Ciencias para la Ciudadanía','CYPESDA','LDRDALCE','EYCDCY','LYEDSD','IYEDSD','Otra'].map(s=>`<option ${s===post?.subject?'selected':''}>${esc(s)}</option>`).join('')}</select></label>
- <label>Fecha y hora (solo evaluaciones)<input name="due_at" type="datetime-local" value="${esc(isoLocal(post?.due_at))}"></label>
+ <label>Fecha y hora (evaluaciones y actividades)<input name="due_at" type="datetime-local" value="${esc(isoLocal(post?.due_at))}"></label>
  <label>Descripción<textarea name="description" maxlength="1000" placeholder="Contenido de la evaluación, páginas a estudiar...">${esc(post?.description||'')}</textarea></label>
  <button type="submit" class="btn btn-primary">${editing?'Guardar corrección':'Publicar para todo el curso'}</button>
  </form>`;
@@ -205,6 +206,7 @@ function render(){
  ${state.error?`<div class="local-banner">No se pudieron cargar todos los datos: ${esc(state.error)}</div>`:''}
  <div class="grid columns"><section class="panel"><div class="panel-head"><h2>◷ Próximas evaluaciones</h2><button class="btn btn-sm" data-course-action="refresh">Actualizar</button></div>${upcoming.length?upcoming.map(card).join(''):empty('No hay evaluaciones próximas','Cuando un compañero registre una prueba, aparecerá aquí.','◷')}</section>${accountUI()}</div>
  ${notificationUI()}
+ ${renderExtraHub()}
  ${state.member?`<section class="panel"><h2>+ Publicar para el curso</h2><p class="small-label">Máximo 5 publicaciones por compañero cada 24 horas. Usa fechas verificadas.</p>${form()}</section>`:''}
  <section class="panel"><h2>Publicaciones compartidas</h2>${state.posts.length?state.posts.map(card).join(''):empty('Aún no hay publicaciones','Puedes ser el primero en ayudar al curso.','📚')}</section>`;
 }
@@ -225,14 +227,16 @@ async function join(form){
  const code=String(new FormData(form).get('code')||'').trim();await freshSession();
  const joined=await api('/rest/v1/rpc/portal_join_course',{method:'POST',body:{p_code:code},authenticated:true});
  if(joined!==true)throw Error('El código no es válido');
- await loadIdentity();refreshUI();notify('Ya puedes publicar para el curso ✓');
+ await loadIdentity();refreshUI();void onExtrasAuthenticated();notify('Ya puedes publicar para el curso ✓');
 }
 async function submitPost(form,edit=false){
  const d=new FormData(form);const raw={kind:d.get('kind'),title:d.get('title'),subject:d.get('subject'),description:d.get('description'),due_at:d.get('due_at')?new Date(String(d.get('due_at'))).toISOString():undefined};
  const item=validatePost(raw);
+ let createdId=null;
  if(edit){if(state.role!=='admin')throw Error('Solo el administrador puede editar');await api(`/rest/v1/portal_posts?id=eq.${encodeURIComponent(form.dataset.id)}`,{authenticated:true,method:'PATCH',body:item});state.editId=null}
- else {if(!state.member)throw Error('Necesitas unirte al curso');await api('/rest/v1/portal_posts',{method:'POST',authenticated:true,body:{...item,created_by:state.user.id}})}
+ else {if(!state.member)throw Error('Necesitas unirte al curso');const added=await api('/rest/v1/portal_posts?select=id',{method:'POST',authenticated:true,headers:{Prefer:'return=representation'},body:{...item,created_by:state.user.id}});createdId=added?.[0]?.id||null;}
  await loadPosts(true);notify(edit?'Publicación corregida':'Publicado para todo el curso ✓');
+ if(createdId){const response=await fetch('/api/notify-post',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+state.session.access_token},body:JSON.stringify({post_id:createdId})}).catch(()=>null);if(!response?.ok)notify('Publicado; el aviso instantáneo no pudo confirmarse.');}
 }
 async function del(id){if(state.role!=='admin')throw Error('Sin permisos de administrador');if(!confirm('¿Retirar esta publicación de todo el curso?'))return;await api(`/rest/v1/portal_posts?id=eq.${encodeURIComponent(id)}`,{authenticated:true,method:'PATCH',body:{is_deleted:true}});await loadPosts(true);notify('Publicación retirada')}
 function decodeVapid(key){const pad='='.repeat((4-key.length%4)%4);const str=atob((key+pad).replace(/-/g,'+').replace(/_/g,'/'));return Uint8Array.from(str,c=>c.charCodeAt(0))}
@@ -275,6 +279,6 @@ document.addEventListener('click',async event=>{
  try{const a=action.dataset.courseAction;if(a==='refresh')await loadPosts(true);if(a==='focus-login'){const input=document.querySelector('#courseLoginForm input[type="email"]');input?.focus();input?.scrollIntoView?.({behavior:'smooth',block:'center'});}if(a==='notification-help')showNotificationWelcome(true);if(a==='subscribe')await subscribe();if(a==='unsubscribe')await unsubscribe();if(a==='logout'){if(state.session){await fetch(`${state.config.supabaseUrl}/auth/v1/logout`,{method:'POST',headers:{apikey:state.config.publishableKey,Authorization:`Bearer ${state.session.access_token}`}}).catch(()=>{});}storeSession(null);state.user=null;state.role='visitor';state.member=false;refreshUI();}}
  catch(err){notify(err.message||'No se pudo completar la acción')}
 });
-window.PortalCommunity={render,preview,onOpen(){loadPosts().catch(e=>{state.error=e.message;refreshUI()})}};
+window.PortalCommunity={render,preview,renderExtra,onExtraOpen,renderPersonalSync,context:()=>({state,api,loadPosts}),onOpen(){loadPosts().catch(e=>{state.error=e.message;refreshUI()})}};
 initialize();
 setInterval(()=>{if(active()&&document.visibilityState==='visible'){loadPosts(true).catch(e=>{state.error=e.message})}},60000);

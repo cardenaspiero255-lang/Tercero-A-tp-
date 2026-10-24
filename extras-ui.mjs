@@ -1,0 +1,12 @@
+export const E=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+export const C=()=>window.PortalCommunity?.context?.();
+export const R=()=>window.render?.();
+export const API=(path,opts={})=>C()?.api(path,opts);
+export const member=()=>!!C()?.state?.member;
+export const admin=()=>C()?.state?.role==='admin';
+export const user=()=>C()?.state?.user;
+export const panel=(title,content)=>`<section class="panel"><h2>${title}</h2>${content}</section>`;
+export const locked=()=>panel('🔒 Acceso al curso','<p>Inicia sesión en Comunidad y únete con el código de invitación.</p><button class="btn btn-primary" data-page="community">Ir a Comunidad</button>');
+export const msg=text=>window.toast?.(text);
+export const extraError=error=>`<div class="local-banner" role="alert">${E(error?.message||'No se pudo completar la acción')}</div>`;
+export const localDate=(time)=>new Intl.DateTimeFormat('es-CL',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',timeZone:'America/Santiago'}).format(new Date(time));

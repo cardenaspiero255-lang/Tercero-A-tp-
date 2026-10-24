@@ -28,7 +28,7 @@ test('aviso para activar notificaciones visible sin sesión, permiso solo al ser
 });
 
 test('el service worker sale de cache v2 y da prioridad a scripts actuales',()=>{
-  assert.match(worker,/const CACHE='portal-3a-web-v4'/);
+  assert.match(worker,/const CACHE='portal-3a-web-v5'/);
   assert.match(worker,/self\.skipWaiting\(\)/);
   assert.match(worker,/fetch\(r\)[\s\S]*?caches\.match\(r\)/);
   assert.match(worker,/u\.pathname\.includes\('\/api\/'\)/);

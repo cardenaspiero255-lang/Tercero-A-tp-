@@ -14,16 +14,16 @@ export function daysToExam(date,now=new Date()){
 }
 export function validatePost(raw,now=new Date()){
   const kind=String(raw.kind||'');
-  if(!['exam','notice'].includes(kind))throw new Error('Tipo no permitido');
+  if(!['exam','notice','activity'].includes(kind))throw new Error('Tipo no permitido');
   const title=String(raw.title||'').trim();
   const subject=String(raw.subject||'General').trim()||'General';
   const description=String(raw.description||'').trim();
   if(title.length<3||title.length>120||subject.length>100||description.length>1000)throw new Error('Longitud inválida');
   // Reject markup instead of trying to sanitize it into a different title.
   if(/[<>]/.test(title+subject+description))throw new Error('No se admite código HTML');
-  const due=kind==='exam'?new Date(raw.due_at):null;
-  if(kind==='exam'&&(!Number.isFinite(due.valueOf())||due.getTime()<=new Date(now).getTime()))throw new Error('La evaluación debe tener una fecha futura');
-  return {kind,title,subject,description,due_at:kind==='exam'?due.toISOString():null};
+  const due=['exam','activity'].includes(kind)?new Date(raw.due_at):null;
+  if(['exam','activity'].includes(kind)&&(!Number.isFinite(due.valueOf())||due.getTime()<=new Date(now).getTime()))throw new Error('La evaluación debe tener una fecha futura');
+  return {kind,title,subject,description,due_at:['exam','activity'].includes(kind)?due.toISOString():null};
 }
 export function selectUpcoming(posts,now=new Date()){
   return posts.filter(p=>p.kind==='exam'&&!p.is_deleted&&p.due_at&&daysToExam(p.due_at,now)>=0&&daysToExam(p.due_at,now)<=30)
