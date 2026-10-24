@@ -49,9 +49,22 @@ create policy portal_dm_sender_insert on public.portal_messages for insert to au
  with check(
   sender_id=(select auth.uid()) and (select public.portal_is_member())
   and exists(select 1 from public.portal_profiles p where p.user_id=recipient_id)
-  and not exists(select 1 from public.portal_messages old where old.sender_id=(select auth.uid()) and old.sent_at>now()-interval '60 seconds'
-    group by old.sender_id having count(*)>=4)
  );
+
+-- Avoid policy recursion: rate control belongs in a trigger, not an INSERT policy
+-- that recursively selects the same RLS table.
+create or replace function public.portal_message_rate_guard() returns trigger
+language plpgsql security invoker set search_path = '' as $
+begin
+ if (select count(*) from public.portal_messages m
+     where m.sender_id=new.sender_id and m.sent_at>now()-interval '60 seconds')>=4 then
+  raise exception 'Máximo cuatro mensajes por minuto';
+ end if;
+ return new;
+end; $;
+revoke all on function public.portal_message_rate_guard() from public,anon,authenticated;
+create trigger portal_message_rate before insert on public.portal_messages
+for each row execute function public.portal_message_rate_guard();
 
 create table public.portal_message_reports(
  id uuid primary key default gen_random_uuid(),
