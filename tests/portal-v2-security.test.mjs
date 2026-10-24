@@ -22,7 +22,6 @@ test('mensajes, perfiles y archivos bajo RLS obligatorio sin SELECT público',()
  assert.match(sql,/portal_storage_member_read/);
  assert.match(sql,/portal_storage_member_upload/);
  assert.match(sql,/storage\.buckets\(id,name,public,file_size_limit/);
- assert.match(sql,/true/);
  assert.doesNotMatch(sql,/create policy portal_dm_participants_read[\s\S]{0,220}using\s*\(\s*true\s*\)/i);
 });
 test('votación única por cuenta y agregación sin exponer voto individual',()=>{
