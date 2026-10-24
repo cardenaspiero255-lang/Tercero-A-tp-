@@ -157,7 +157,7 @@ function showNotificationWelcome(force=false){
  document.body.style.overflow='hidden';
  document.addEventListener('keydown',onKeys);
  primary.focus();
- if(Notification.permission === 'denied'){
+ if(permission==='denied'){
   showGuide('Ya rechazaste o bloqueaste las notificaciones de este sitio en Chrome. Cambia el permiso para activarlas.');
  }else if(permission==='unsupported'){
   showGuide('Este navegador no admite notificaciones web. Prueba desde Chrome en Android.');
