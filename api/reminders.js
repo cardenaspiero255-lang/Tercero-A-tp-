@@ -30,7 +30,8 @@ export default async function handler(req,res){
   // Every job is reserved atomically in PostgreSQL before delivery. The secret never reaches a browser.
   const jobs=await school('rpc/portal_claim_daily_push_jobs',{p_token:expected,p_day:date});
   if(!Array.isArray(jobs))throw new Error('Invalid subscription response');
-  const webpush=await import('web-push');
+  const pushModule=await import('web-push');
+  const webpush=pushModule.default||pushModule;
   webpush.setVapidDetails('mailto:cardenaspiero255@gmail.com',process.env.VAPID_PUBLIC_KEY,process.env.VAPID_PRIVATE_KEY);
   let sent=0,failed=0;
   for(const item of jobs){
