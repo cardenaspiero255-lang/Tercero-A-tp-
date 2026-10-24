@@ -21,7 +21,7 @@ self.addEventListener('fetch',e=>{
 
 self.addEventListener('push',event=>{
  let message={title:'📚 Portal del curso',body:'Revisa los recordatorios de evaluaciones.',url:'/'};
- try{const data=event.data?.json();if(typeof data?.title==='string'&&typeof data?.body==='string')message={title:data.title.slice(0,120),body:data.body.slice(0,240),url:'/'};}catch{}
+ try{const data=event.data?.json();if(typeof data?.title==='string'&&typeof data?.body==='string')message={title:data.title.slice(0,120),body:data.body.slice(0,240),url:data.url==='/#comunidad'?'/#comunidad':'/'};}catch{}
  event.waitUntil(self.registration.showNotification(message.title,{body:message.body,icon:'./icon.svg',badge:'./icon.svg',tag:'portal-curso-notificacion',data:{url:message.url&&/^\/#(?:comunidad)?$/.test(message.url)?message.url:'/#comunidad'}}));
 });
 self.addEventListener('notificationclick',event=>{
