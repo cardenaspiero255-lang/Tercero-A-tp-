@@ -48,6 +48,6 @@ test('la activación confirma suscripción solo después de guardar en Supabase'
  assert.match(code,/await api\('\/rest\/v1\/portal_push_subscriptions/);
 });
 test('caché PWA cambia de versión para que llegue el nuevo código a Android',()=>{
- assert.match(worker,/const CACHE='portal-3a-web-v4'/);
+ assert.match(worker,/const CACHE='portal-3a-web-v5'/);
  assert.match(worker,/NETWORK_FIRST/);
 });
