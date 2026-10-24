@@ -15,3 +15,59 @@
 .community-form{margin:12px 0 18px}
 .community-form input,.community-form select,.community-form textarea{width:100%;max-width:100%}
 @media(max-width:640px){.community-post{padding:14px}}
+
+
+/* Invitación de primer acceso: voluntaria, accesible y adaptable a Android. */
+.notification-welcome-backdrop{
+ position:fixed;inset:0;z-index:150;background:rgba(5,10,26,.84);
+ display:flex;align-items:center;justify-content:center;
+ padding:clamp(14px,4vw,24px);overflow-y:auto;
+ overscroll-behavior:contain;
+}
+.notification-welcome-dialog{
+ width:min(100%,490px);max-height:calc(100dvh - 28px);overflow-y:auto;
+ background:var(--panel);color:var(--text);border:1px solid var(--border);
+ box-shadow:0 26px 90px rgba(0,0,0,.48);
+ border-radius:24px;padding:clamp(23px,5vw,36px);
+}
+.notification-welcome-icon{
+ display:grid;place-items:center;width:70px;height:70px;margin:0 auto 15px;
+ border-radius:22px;background:var(--panel2);
+ font-size:36px;border:1px solid var(--border);
+}
+.notification-welcome-kicker{
+ font-size:10px;letter-spacing:.14em;text-align:center;
+ color:var(--accent2);font-weight:800;
+}
+.notification-welcome-dialog h2{
+ font-size:clamp(23px,6vw,30px);line-height:1.15;letter-spacing:-.03em;
+ text-align:center;margin:11px 0 15px;color:var(--text);
+}
+.notification-welcome-dialog p{font-size:14px;line-height:1.6;color:var(--muted);text-align:center;margin:0 0 14px}
+.notification-welcome-dialog .notification-welcome-detail{
+ border:1px solid var(--border);background:var(--panel2);padding:12px 14px;
+ border-radius:12px;font-size:12px;
+}
+.notification-welcome-help{
+ font-size:12px;line-height:1.55;border:1px solid var(--border);
+ background:var(--panel2);border-radius:12px;padding:15px;
+ margin:0 0 17px;color:var(--text);
+}
+#notificationWelcome [hidden]{display:none!important}
+.notification-welcome-help strong{display:block;margin-bottom:8px}
+.notification-welcome-help ol{padding-left:20px;margin:0 0 8px}
+.notification-welcome-help li{margin:4px 0}
+.notification-welcome-help small{display:block;color:var(--muted)}
+.notification-welcome-actions{display:grid;gap:10px;margin:20px 0 12px}
+.notification-welcome-actions .btn{width:100%;min-height:49px;font-size:14px}
+.notification-welcome-actions .btn-primary{font-size:15px}
+.notification-welcome-actions .btn:focus-visible{outline:3px solid var(--accent2);outline-offset:3px}
+.notification-welcome-dialog .notification-welcome-footnote{
+ font-size:11px;color:var(--muted2);margin:0;line-height:1.55
+}
+@media(max-width:480px){
+ .notification-welcome-backdrop{padding:10px;align-items:center}
+ .notification-welcome-dialog{padding:22px 18px;border-radius:20px;max-height:calc(100dvh - 20px)}
+ .notification-welcome-icon{width:58px;height:58px;font-size:30px;margin-bottom:10px}
+ .notification-welcome-actions{margin-top:14px}
+}
