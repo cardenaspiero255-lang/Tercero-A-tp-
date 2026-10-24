@@ -1,7 +1,7 @@
-const CACHE='portal-3a-web-v4';
-const PUBLIC_ASSETS=['./','./index.html','./styles.css','./app.js','./community.mjs','./collab-core.mjs','./icon.svg','./manifest.webmanifest'];
+const CACHE='portal-3a-web-v5';
+const PUBLIC_ASSETS=['./','./index.html','./styles.css','./app.js','./community.mjs','./collab-core.mjs','./extras-core.mjs','./extras-ui.mjs','./extras.mjs','./extras-calendar.mjs','./extras-polls.mjs','./extras-materials.mjs','./extras-messages.mjs','./extras-stats.mjs','./extras-sync.mjs','./icon.svg','./manifest.webmanifest'];
 const NAMES=new Set(PUBLIC_ASSETS.slice(1).map(s=>s.slice(2)));
-const NETWORK_FIRST=new Set(['app.js','community.mjs','collab-core.mjs','styles.css']);
+const NETWORK_FIRST=new Set(['app.js','community.mjs','collab-core.mjs','styles.css','extras-core.mjs','extras-ui.mjs','extras.mjs','extras-calendar.mjs','extras-polls.mjs','extras-materials.mjs','extras-messages.mjs','extras-stats.mjs','extras-sync.mjs']);
 self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(PUBLIC_ASSETS)).then(()=>self.skipWaiting())));
 self.addEventListener('activate',e=>e.waitUntil(Promise.all([caches.keys().then(ks=>Promise.all(ks.filter(k=>k.startsWith('portal-3a-')&&k!==CACHE).map(k=>caches.delete(k)))),self.clients.claim()])));
 self.addEventListener('fetch',e=>{
@@ -22,12 +22,12 @@ self.addEventListener('fetch',e=>{
 self.addEventListener('push',event=>{
  let message={title:'📚 Portal del curso',body:'Revisa los recordatorios de evaluaciones.',url:'/'};
  try{const data=event.data?.json();if(typeof data?.title==='string'&&typeof data?.body==='string')message={title:data.title.slice(0,120),body:data.body.slice(0,240),url:'/'};}catch{}
- event.waitUntil(self.registration.showNotification(message.title,{body:message.body,icon:'./icon.svg',badge:'./icon.svg',tag:'portal-examen-diario',data:{url:'/'}}));
+ event.waitUntil(self.registration.showNotification(message.title,{body:message.body,icon:'./icon.svg',badge:'./icon.svg',tag:'portal-curso-notificacion',data:{url:message.url&&/^\/#(?:comunidad)?$/.test(message.url)?message.url:'/#comunidad'}}));
 });
 self.addEventListener('notificationclick',event=>{
  event.notification.close();
  event.waitUntil(self.clients.matchAll({type:'window',includeUncontrolled:true}).then(async clients=>{
-   for(const client of clients){if(new URL(client.url).origin===self.location.origin){await client.focus();return;}}
-   await self.clients.openWindow('/');
+   for(const client of clients){if(new URL(client.url).origin===self.location.origin){await client.focus();await client.navigate?.(event.notification.data?.url||'/#comunidad');return;}}
+   await self.clients.openWindow(event.notification.data?.url||'/#comunidad');
  }));
 });
