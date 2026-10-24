@@ -20,7 +20,7 @@ create table public.portal_profiles(
 alter table public.portal_profiles enable row level security;
 revoke all on public.portal_profiles from anon,authenticated;
 grant select(user_id,display_name) on public.portal_profiles to authenticated;
-grant insert(user_id,display_name),update(display_name) on public.portal_profiles to authenticated;
+grant insert(user_id,display_name),update(user_id,display_name) on public.portal_profiles to authenticated;
 create policy portal_profiles_members_read on public.portal_profiles for select to authenticated
  using ((select public.portal_is_member()));
 create policy portal_profiles_self_insert on public.portal_profiles for insert to authenticated
@@ -174,7 +174,7 @@ create table public.portal_personal_state(
 );
 alter table public.portal_personal_state enable row level security;
 revoke all on public.portal_personal_state from anon,authenticated;
-grant select(user_id,data,updated_at),insert(user_id,data),update(data,updated_at)
+grant select(user_id,data,updated_at),insert(user_id,data),update(user_id,data,updated_at)
  on public.portal_personal_state to authenticated;
 create policy portal_personal_read on public.portal_personal_state for select to authenticated
  using(user_id=(select auth.uid()) and (select public.portal_is_member()));
