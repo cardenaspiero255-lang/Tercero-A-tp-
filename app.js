@@ -44,7 +44,7 @@ function initialPage(hash=window.location.hash){
  // A Supabase email link returns access tokens in the URL fragment.
  // Render the community page while its module consumes and removes those tokens.
  if(urlHash.includes('access_token=')||urlHash.includes('error_code='))return 'community';
- const routes={'#comunidad':'community','#community':'community','#horario':'schedule','#tareas':'tasks','#evaluaciones':'exams','#avisos':'notices','#materiales':'resources','#ajustes':'settings'};
+ const routes={'#comunidad':'community','#community':'community','#horario':'schedule','#tareas':'tasks','#evaluaciones':'exams','#avisos':'notices','#materiales':'resources','#ajustes':'settings','#calendario':'calendar','#encuestas':'polls','#archivos':'materials','#mensajes':'messages','#estadisticas':'stats'};
  return routes[urlHash]||'home';
 }
 let state=load();let page=initialPage();let day=(new Date().getDay()||1);if(day>5)day=1;
@@ -122,5 +122,5 @@ function exportData(){const file=new Blob([JSON.stringify({version:1,...state},n
 async function importData(file){if(!file)return;try{if(file.size>1e6)throw Error('archivo demasiado grande');const data=JSON.parse(await file.text());if(!data||!Array.isArray(data.tasks)||!Array.isArray(data.exams)||!Array.isArray(data.resources)||!Array.isArray(data.notices))throw Error('formato no válido');const normalize=a=>a.slice(0,300).map(x=>({id:String(x.id||uid()),title:String(x.title||'').slice(0,120),subject:String(x.subject||'').slice(0,100),date:String(x.date||'').slice(0,25),done:!!x.done,url:String(x.url||'').slice(0,2000),description:String(x.description||'').slice(0,1000)}));state={...state,tasks:normalize(data.tasks),exams:normalize(data.exams),resources:normalize(data.resources),notices:normalize(data.notices),notes:String(data.notes||'').slice(0,10000)};save();render();toast('Copia local restaurada');}catch{toast('No se pudo importar el archivo JSON')}}
 setInterval(()=>{if(['home','exams'].includes(page))render()},60000);
 window.portalCurrentPage=()=>page;
-window.PortalPersonal={get:()=>JSON.parse(JSON.stringify(state)),replace:(snapshot)=>{state={...state,...snapshot};save();render()},export:exportData};
+window.PortalPersonal={get:()=>JSON.parse(JSON.stringify(state)),replace:(snapshot)=>{state={...state,...snapshot};document.documentElement.dataset.theme=state.theme;save();render()},export:exportData};
 init();
