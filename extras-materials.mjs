@@ -48,7 +48,7 @@ export async function download(id){
  if(typeof signed!=='string'||!signed.startsWith('/object/sign/portal-study-files/'))throw Error('No se pudo generar el enlace privado');
  const a=document.createElement('a');
  a.href=C().state.config.supabaseUrl+'/storage/v1'+signed;
- a.target='_blank';a.rel='noopener noreferrer';a.click();
+ a.target='_self';a.click();
 }
 export async function remove(id){
  const item=materials.find(m=>m.id===id);
