@@ -38,7 +38,8 @@ export default async function handler(req,res){
   const jobs=await db('rpc/portal_claim_event_push_jobs',{method:'POST',body:{p_token:process.env.CRON_SECRET,p_post:post.id}});
   if(!Array.isArray(jobs))throw Error('Invalid push job list');
   if(jobs.length===0)return res.status(200).json({sent:0,failed:0,reason:'Ninguna suscripción nueva'});
-  const webpush=await import('web-push');
+  const pushModule=await import('web-push');
+  const webpush=pushModule.default||pushModule;
   webpush.setVapidDetails('mailto:cardenaspiero255@gmail.com',process.env.VAPID_PUBLIC_KEY,process.env.VAPID_PRIVATE_KEY);
   const title=post.kind==='exam'?'📚 Nueva evaluación':post.kind==='activity'?'📌 Nueva actividad':'📢 Nuevo aviso';
   const payload=JSON.stringify({title,body:String(post.subject+': '+post.title).slice(0,190),url:'/#comunidad'});
